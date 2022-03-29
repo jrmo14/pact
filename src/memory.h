@@ -18,6 +18,11 @@
 
 #define FREE(type, pointer) reallocate(pointer, sizeof(type), 0);
 
+#define GC_HEAP_GROW_FACTOR 2
+
 void *reallocate(void *pointer, size_t oldSize, size_t newSize);
+void collectGarbage();
+void markValue(Value v);
+void markObject(Obj *obj);
 void freeObjects();
 #endif

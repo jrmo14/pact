@@ -2,6 +2,7 @@
 #define clox_compiler_h
 
 #include <stdio.h>
+#include <sys/types.h>
 
 #include "scanner.h"
 #include "vm.h"
@@ -40,14 +41,30 @@ typedef struct {
 typedef struct {
   Token name;
   int depth;
+  bool isCaptured;
 } Local;
 
+typedef enum {
+  TYPE_FUNCTION,
+  TYPE_SCRIPT
+} FunctionType;
+
 typedef struct {
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
+
+typedef struct Compiler{
+  struct Compiler *enclosing;
+  ObjFunction *function;
+  FunctionType type;
   Local locals[UINT8_COUNT];
   int localCount;
+  Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
 } Compiler;
 
-bool compile(const char *src, Chunk *chunk);
+ObjFunction *compile(const char *src);
+void markCompilerRoots();
 
 #endif
