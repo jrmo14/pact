@@ -28,7 +28,7 @@ static void parsePrecedence(Precedence p);
 static ParseRule *getRule(TokenType t);
 static uint8_t identifierConstant(Token *name);
 static int resolveLocal(Compiler *compiler, Token *name);
-static int resolveUpvalue(Compiler* compiler, Token* name);
+static int resolveUpvalue(Compiler *compiler, Token *name);
 
 static Chunk *currentChunk() { return &current->function->chunk; }
 
@@ -111,7 +111,6 @@ static void emitLoop(int loopStart) {
   emitByte(offset & 0xff);
 }
 
-
 static void patchJump(int offset) {
   int jump = currentChunk()->count - offset - 2;
   if (jump > UINT16_MAX) {
@@ -136,7 +135,9 @@ static ObjFunction *endCompiler() {
   ObjFunction *function = current->function;
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-    disassembleChunk(currentChunk(), function->name != NULL ? function->name->chars : "<script>");
+    disassembleChunk(currentChunk(), function->name != NULL
+                                         ? function->name->chars
+                                         : "<script>");
   }
 #endif
   current = current->enclosing;
@@ -149,7 +150,7 @@ static void endScope() {
   current->scopeDepth--;
   while (current->localCount > 0 &&
          current->locals[current->localCount - 1].depth > current->scopeDepth) {
-    if(current->locals[current->localCount - 1].isCaptured) {
+    if (current->locals[current->localCount - 1].isCaptured) {
       emitByte(OP_CLOSE_UPVALUE);
     } else {
       emitByte(OP_POP);
@@ -180,7 +181,8 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
   compiler->function = newFunction();
   current = compiler;
   if (type != TYPE_SCRIPT) {
-    current->function->name = copyString(parser.previous.start, parser.previous.length);
+    current->function->name =
+        copyString(parser.previous.start, parser.previous.length);
   }
   Local *local = &current->locals[current->localCount++];
   local->depth = 0;
@@ -213,8 +215,7 @@ static void namedVariable(Token name, bool canAssign) {
   } else if ((arg = resolveUpvalue(current, &name)) != -1) {
     getOp = OP_GET_UPVALUE;
     setOp = OP_SET_UPVALUE;
-  }
-  else {
+  } else {
     arg = identifierConstant(&name);
     getOp = OP_GET_GLOBAL;
     setOp = OP_SET_GLOBAL;
@@ -301,7 +302,7 @@ static int resolveLocal(Compiler *compiler, Token *name) {
 
 static int addUpvalue(Compiler *compiler, uint8_t index, bool isLocal) {
   int upvalueCount = compiler->function->upvalueCount;
-  for(int i = 0; i < upvalueCount; i++) {
+  for (int i = 0; i < upvalueCount; i++) {
     Upvalue *upvalue = &compiler->upvalues[i];
     if (upvalue->index == index && upvalue->isLocal == isLocal) {
       return i;
@@ -390,11 +391,11 @@ static uint8_t argumentList() {
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
       expression();
-      if(count == 255) {
+      if (count == 255) {
         error("Can't have more than 255 arguments.");
       }
       count++;
-    } while(match(TOKEN_COMMA));
+    } while (match(TOKEN_COMMA));
   }
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
   return count;
@@ -447,7 +448,7 @@ static void function(FunctionType type) {
       }
       uint8_t constant = parseVariable("Expect parameter name.");
       defineVariable(constant);
-    } while(match(TOKEN_COMMA));
+    } while (match(TOKEN_COMMA));
   }
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
   consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
@@ -465,7 +466,8 @@ static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
   uint8_t constant = identifierConstant(&parser.previous);
   FunctionType type = TYPE_METHOD;
-  if (parser.previous.length == 4 && memcmp(parser.previous.start, "init", 4) == 0) {
+  if (parser.previous.length == 4 &&
+      memcmp(parser.previous.start, "init", 4) == 0) {
     type = TYPE_INITIALIZER;
   }
   function(type);
@@ -488,7 +490,7 @@ static void expressionStatement() {
 static void forStatement() {
   beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
-  if (match(TOKEN_SEMICOLON)){
+  if (match(TOKEN_SEMICOLON)) {
 
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
@@ -511,12 +513,11 @@ static void forStatement() {
     int incrementStart = currentChunk()->count;
     expression();
     emitByte(OP_POP);
-    consume(TOKEN_RIGHT_PAREN,"Expect ')' after for clauses.");
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
     emitLoop(loopStart);
     loopStart = incrementStart;
     patchJump(bodyJump);
   }
-
 
   statement();
   emitLoop(loopStart);
@@ -618,6 +619,35 @@ static void varDeclaration() {
   defineVariable(global);
 }
 
+static Token syntheticToken(const char *text) {
+  Token token;
+  token.start = text;
+  token.length = (int)strlen(text);
+  return token;
+}
+
+static void super_(bool _) {
+  if (!currentClass) {
+    error("Can't use 'super' outside of a class.");
+  } else if (!currentClass->hasSuperclass) {
+    error("Can't use 'super' in a class with no superclass.");
+  }
+  consume(TOKEN_DOT, "Expect '.' after 'super'.");
+  consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+  uint8_t name = identifierConstant(&parser.previous);
+
+  namedVariable(syntheticToken("this"), false);
+  if (match(TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList();
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_SUPER_INVOKE, name);
+    emitByte(argCount);
+  } else {
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_GET_SUPER, name);
+  }
+}
+
 static void classDeclaration() {
   consume(TOKEN_IDENTIFIER, "Expect class name.");
   Token className = parser.previous;
@@ -630,6 +660,21 @@ static void classDeclaration() {
   ClassCompiler classCompiler;
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
+  classCompiler.hasSuperclass = false;
+
+  if (match(TOKEN_LESS)) {
+    consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+    variable(false);
+    if (identifiersEqual(&className, &parser.previous)) {
+      error("A class can't inherit from itself.");
+    }
+    beginScope();
+    addLocal(syntheticToken("super"));
+    defineVariable(0);
+    namedVariable(className, false);
+    emitByte(OP_INHERIT);
+    classCompiler.hasSuperclass = true;
+  }
 
   namedVariable(className, false);
   consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
@@ -638,6 +683,10 @@ static void classDeclaration() {
   }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
   emitByte(OP_POP);
+
+  if (classCompiler.hasSuperclass) {
+    endScope();
+  }
 
   currentClass = currentClass->enclosing;
 }
@@ -660,7 +709,7 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
-  } else if(match(TOKEN_FOR)) {
+  } else if (match(TOKEN_FOR)) {
     forStatement();
   } else if (match(TOKEN_IF)) {
     ifStatement();
@@ -812,7 +861,7 @@ ParseRule rules[] = {
     [TOKEN_OR] = {NULL, or_, PREC_OR},
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SUPER] = {super_, NULL, PREC_NONE},
     [TOKEN_THIS] = {this_, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},

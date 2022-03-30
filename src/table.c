@@ -18,8 +18,8 @@ void freeTable(Table *table) {
   initTable(table);
 }
 
-static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
-  u_int32_t idx = key->hash % capacity;
+Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
+  u_int32_t idx = key->hash & (capacity - 1);
   Entry *tombstone = NULL;
   for (;;) {
     Entry *e = &entries[idx];
@@ -32,7 +32,7 @@ static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
     } else if (e->key == key) {
       return e;
     }
-    idx = (idx + 1) % capacity;
+    idx = (idx + 1) & (capacity - 1);
   }
 }
 
@@ -113,7 +113,7 @@ ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t
     return NULL;
   }
 
-  uint32_t idx = hash % table->capacity;
+  uint32_t idx = hash & (table->capacity - 1);
   for(;;) {
     Entry *e = &table->entries[idx];
     if (!e->key) {
@@ -123,7 +123,7 @@ ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t
     } else if (e->key->length == length && e->key->hash == hash && memcmp(e->key->chars, chars, length) == 0) {
       return e->key;
     }
-    idx = (idx + 1) % table->capacity;
+    idx = (idx + 1) & (table->capacity - 1);
   }
 }
 
