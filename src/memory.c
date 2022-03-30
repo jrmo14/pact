@@ -3,6 +3,7 @@
 
 #include "compiler.h"
 #include "memory.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -64,13 +65,22 @@ static void freeObject(Obj *obj) {
   printf("%p free type %d\n", (void *)obj, obj->type);
 #endif
   switch (obj->type) {
-  case OBJ_CLASS:
+  case OBJ_CLASS: {
+    ObjClass *clazz = (ObjClass *)obj;
+    freeTable(&clazz->methods);
     FREE(ObjClass, obj);
     break;
+  }
   case OBJ_FUNCTION: {
     ObjFunction *func = (ObjFunction *)obj;
     freeChunk(&func->chunk);
     FREE(ObjFunction, obj);
+    break;
+  }
+  case OBJ_INSTANCE: {
+    ObjInstance *instance = (ObjInstance *) obj;
+    freeTable(&instance->fields);
+    FREE(ObjInstance, obj);
     break;
   }
   case OBJ_NATIVE: {
@@ -91,6 +101,9 @@ static void freeObject(Obj *obj) {
   }
   case OBJ_UPVALUE:
     FREE(ObjUpvalue, obj);
+    break;
+  case OBJ_BOUND_METHOD:
+    FREE(ObjBoundMethod, obj);
     break;
   }
 }
@@ -116,6 +129,7 @@ static void markRoots() {
   }
   markTable(&vm.globals);
   markCompilerRoots();
+  markObject((Obj *) vm.initString);
 }
 
 static void markArray(ValueArray *array) {
@@ -132,8 +146,9 @@ static void blackenObject(Obj *obj) {
 #endif
   switch (obj->type) {
   case OBJ_CLASS: {
-    ObjClass *class = (ObjClass *)obj;
-    markObject((Obj *)class->name);
+    ObjClass *clazz = (ObjClass *)obj;
+    markObject((Obj *)clazz->name);
+    markTable(&clazz->methods);
     break;
   }
   case OBJ_CLOSURE: {
@@ -148,9 +163,21 @@ static void blackenObject(Obj *obj) {
     markObject((Obj *)func->name);
     markArray(&func->chunk.constants);
   }
+  case OBJ_INSTANCE: {
+    ObjInstance *inst = (ObjInstance *)obj;
+    markObject((Obj *)inst->klass);
+    markTable(&inst->fields);
+    break;
+  }
   case OBJ_UPVALUE:
     markValue(((ObjUpvalue *)obj)->closed);
     break;
+  case OBJ_BOUND_METHOD: {
+    ObjBoundMethod *bound = (ObjBoundMethod *)obj;
+    markValue(bound->receiver);
+    markObject((Obj *)bound->method);
+    break;
+  }
   case OBJ_NATIVE:
   case OBJ_STRING:
     break;
