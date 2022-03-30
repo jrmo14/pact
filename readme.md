@@ -1,4 +1,4 @@
-# Clox from [Crafting Interpreters](https://craftinginterpreters.com/scanning-on-demand.html)
+# Pact, a tiny language based on Lox from [Crafting Interpreters](https://craftinginterpreters.com/scanning-on-demand.html)
 
 ## Differences from book
 ## TODO differences
