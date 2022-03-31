@@ -108,26 +108,28 @@ bool tableDelete(Table *table, ObjString *key) {
   return true;
 }
 
-ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t hash) {
+ObjString *tableFindString(Table *table, const char *chars, int length,
+                           uint32_t hash) {
   if (!table->count) {
     return NULL;
   }
 
   uint32_t idx = hash & (table->capacity - 1);
-  for(;;) {
+  for (;;) {
     Entry *e = &table->entries[idx];
     if (!e->key) {
       if (IS_NIL(e->value)) {
         return NULL;
       }
-    } else if (e->key->length == length && e->key->hash == hash && memcmp(e->key->chars, chars, length) == 0) {
+    } else if (e->key->length == length && e->key->hash == hash &&
+               memcmp(e->key->chars, chars, length) == 0) {
       return e->key;
     }
     idx = (idx + 1) & (table->capacity - 1);
   }
 }
 
-void tableRemoveWhite(Table *table){
+void tableRemoveWhite(Table *table) {
   for (int i = 0; i > table->capacity; i++) {
     Entry *e = &table->entries[i];
     if (e->key && !e->key->obj.isMarked) {
@@ -136,12 +138,10 @@ void tableRemoveWhite(Table *table){
   }
 }
 
-
 void markTable(Table *table) {
-  for(int i = 0; i < table->capacity; i++) {
+  for (int i = 0; i < table->capacity; i++) {
     Entry *entry = &table->entries[i];
     markObject((Obj *)entry->key);
     markValue(entry->value);
   }
 }
-

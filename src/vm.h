@@ -3,9 +3,9 @@
 
 #include "chunk.h"
 #include "common.h"
-#include "value.h"
-#include "table.h"
 #include "object.h"
+#include "table.h"
+#include "value.h"
 
 #define FRAMES_MAX 64
 #define STACK_MAX (FRAMES_MAX * UINT8_COUNT)

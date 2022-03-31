@@ -4,10 +4,10 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#include "scanner.h"
-#include "vm.h"
 #include "common.h"
 #include "object.h"
+#include "scanner.h"
+#include "vm.h"
 
 typedef struct {
   Token current;
@@ -18,15 +18,15 @@ typedef struct {
 
 typedef enum {
   PREC_NONE,
-  PREC_ASSIGNMENT,  // =
-  PREC_OR,          // or
-  PREC_AND,         // and
-  PREC_EQUALITY,    // == !=
-  PREC_COMPARISON,  // < > <= >=
-  PREC_TERM,        // + -
-  PREC_FACTOR,      // * /
-  PREC_UNARY,       // ! -
-  PREC_CALL,        // . ()
+  PREC_ASSIGNMENT, // =
+  PREC_OR,         // or
+  PREC_AND,        // and
+  PREC_EQUALITY,   // == !=
+  PREC_COMPARISON, // < > <= >=
+  PREC_TERM,       // + -
+  PREC_FACTOR,     // * /
+  PREC_UNARY,      // ! -
+  PREC_CALL,       // . ()
   PREC_PRIMARY
 } Precedence;
 
@@ -56,7 +56,7 @@ typedef struct {
   bool isLocal;
 } Upvalue;
 
-typedef struct Compiler{
+typedef struct Compiler {
   struct Compiler *enclosing;
   ObjFunction *function;
   FunctionType type;

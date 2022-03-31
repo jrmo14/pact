@@ -2,8 +2,8 @@
 #include <string.h>
 
 #include "memory.h"
-#include "value.h"
 #include "object.h"
+#include "value.h"
 
 void initValueArray(ValueArray *array) {
   array->values = NULL;
@@ -44,15 +44,18 @@ void printValue(Value value) {
 }
 
 bool valuesEqual(Value a, Value b) {
-  if (a.type != b.type) return false;
+  if (a.type != b.type)
+    return false;
   switch (a.type) {
-    case VAL_BOOL:
-      return AS_BOOL(a) == AS_BOOL(b);
-    case VAL_NIL:
-      return true;
-    case VAL_NUMBER:
-      return AS_NUMBER(a) == AS_NUMBER(b);
-    case VAL_OBJ: return AS_OBJ(a) == AS_OBJ(b);
-    default: return false;
+  case VAL_BOOL:
+    return AS_BOOL(a) == AS_BOOL(b);
+  case VAL_NIL:
+    return true;
+  case VAL_NUMBER:
+    return AS_NUMBER(a) == AS_NUMBER(b);
+  case VAL_OBJ:
+    return AS_OBJ(a) == AS_OBJ(b);
+  default:
+    return false;
   }
 }

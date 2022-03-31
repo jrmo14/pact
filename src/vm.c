@@ -27,7 +27,7 @@ static bool callValue(Value callee, int argCount);
 static bool invoke(ObjString *name, int argCount);
 static bool invokeFromClass(ObjClass *clazz, ObjString *name, int argCount);
 static bool bindMethod(ObjClass *clazz, ObjString *name);
-static ObjUpvalue * captureUpvalue(Value *local);
+static ObjUpvalue *captureUpvalue(Value *local);
 static void defineMethod(ObjString *name);
 static bool isFalsey(Value val);
 static void concatenate();
@@ -103,7 +103,8 @@ static InterpretResult run() {
 #define READ_BYTE() (*frame->ip++)
 #define READ_SHORT()                                                           \
   (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
-#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
+#define READ_CONSTANT()                                                        \
+  (frame->closure->function->chunk.constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                                               \
   do {                                                                         \
@@ -125,8 +126,9 @@ static InterpretResult run() {
       printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&frame->closure->function->chunk,
-                           (int)(frame->ip - frame->closure->function->chunk.code));
+    disassembleInstruction(
+        &frame->closure->function->chunk,
+        (int)(frame->ip - frame->closure->function->chunk.code));
 #endif
     uint8_t instruction;
     switch (instruction = READ_BYTE()) {
@@ -301,8 +303,7 @@ static InterpretResult run() {
       frame = &vm.frames[vm.frameCount - 1];
       break;
     }
-    case OP_SUPER_INVOKE:
-    {
+    case OP_SUPER_INVOKE: {
       ObjString *method = READ_STRING();
       int argCount = READ_BYTE();
       ObjClass *superclass = AS_CLASS(pop());
@@ -316,7 +317,7 @@ static InterpretResult run() {
       ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
       ObjClosure *closure = newClosure(function);
       push(OBJ_VAL(closure));
-      for(int i = 0; i < closure->upvalueCount; i++) {
+      for (int i = 0; i < closure->upvalueCount; i++) {
         uint8_t isLocal = READ_BYTE();
         uint8_t index = READ_BYTE();
         if (isLocal) {
@@ -327,8 +328,7 @@ static InterpretResult run() {
       }
       break;
     }
-    case OP_INVOKE:
-    {
+    case OP_INVOKE: {
       ObjString *method = READ_STRING();
       int argc = READ_BYTE();
       if (!invoke(method, argc)) {
@@ -455,11 +455,11 @@ static bool callValue(Value callee, int argCount) {
     }
     case OBJ_CLOSURE:
       return call(AS_CLOSURE(callee), argCount);
-    case OBJ_CLASS:{
+    case OBJ_CLASS: {
       ObjClass *klass = AS_CLASS(callee);
       vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
       Value initializer;
-      if(tableGet(&klass->methods, vm.initString, &initializer)){
+      if (tableGet(&klass->methods, vm.initString, &initializer)) {
         return call(AS_CLOSURE(initializer), argCount);
       } else if (argCount != 0) {
         runtimeError("Expected 0 arguments but got %d.", argCount);
@@ -469,7 +469,7 @@ static bool callValue(Value callee, int argCount) {
     }
     case OBJ_BOUND_METHOD: {
       ObjBoundMethod *bound = AS_BOUND_METHOD(callee);
-      vm.stackTop[-argCount-1] = bound->receiver;
+      vm.stackTop[-argCount - 1] = bound->receiver;
       return call(bound->method, argCount);
     }
     default:
@@ -518,10 +518,10 @@ static bool bindMethod(ObjClass *clazz, ObjString *name) {
   return true;
 }
 
-static ObjUpvalue * captureUpvalue(Value *local) {
+static ObjUpvalue *captureUpvalue(Value *local) {
   ObjUpvalue *prev = NULL;
   ObjUpvalue *cur = vm.openUpvalues;
-  while(cur != NULL && cur->location > local) {
+  while (cur != NULL && cur->location > local) {
     prev = cur;
     cur = cur->next;
   }
@@ -530,7 +530,7 @@ static ObjUpvalue * captureUpvalue(Value *local) {
   }
   ObjUpvalue *createdUpvalue = newUpvalue(local);
   createdUpvalue->next = cur;
-  if(!prev) {
+  if (!prev) {
     vm.openUpvalues = createdUpvalue;
   } else {
     prev->next = createdUpvalue;
@@ -539,7 +539,7 @@ static ObjUpvalue * captureUpvalue(Value *local) {
 }
 
 static void closeUpvalues(Value *last) {
-  while(vm.openUpvalues && vm.openUpvalues->location >= last) {
+  while (vm.openUpvalues && vm.openUpvalues->location >= last) {
     ObjUpvalue *upvalue = vm.openUpvalues;
     upvalue->closed = *upvalue->location;
     upvalue->location = &upvalue->closed;

@@ -78,7 +78,7 @@ static void freeObject(Obj *obj) {
     break;
   }
   case OBJ_INSTANCE: {
-    ObjInstance *instance = (ObjInstance *) obj;
+    ObjInstance *instance = (ObjInstance *)obj;
     freeTable(&instance->fields);
     FREE(ObjInstance, obj);
     break;
@@ -129,7 +129,7 @@ static void markRoots() {
   }
   markTable(&vm.globals);
   markCompilerRoots();
-  markObject((Obj *) vm.initString);
+  markObject((Obj *)vm.initString);
 }
 
 static void markArray(ValueArray *array) {
