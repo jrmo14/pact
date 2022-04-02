@@ -197,8 +197,30 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
 }
 
 static void number(bool _) {
-  double value = strtod(parser.previous.start, NULL);
-  emitConstant(NUMBER_VAL(value));
+  long v = 0;
+  bool negate = false;
+  bool floating = false;
+  for (const char *c = parser.previous.start; c < parser.previous.start + parser.previous.length; c++) {
+    if (*c == '.') {
+      floating = true;
+      break;
+    }
+    if (c == parser.previous.start && *c == '-') {
+      negate = true;
+      continue;
+    }
+    v *= 10;
+    v += *c - '0';
+  }
+  if (!floating) {
+    if (negate) {
+      v *= -1;
+    }
+    emitConstant(INTEGER_VAL(v));
+  } else {
+    double value = strtod(parser.previous.start, NULL);
+    emitConstant(FLOAT_VAL(value));
+  }
 }
 
 static void string(bool _) {

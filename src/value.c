@@ -34,8 +34,14 @@ void printValue(Value value) {
   case VAL_NIL:
     printf("nil");
     break;
-  case VAL_NUMBER:
-    printf("%g", AS_NUMBER(value));
+  case VAL_CHARACTER:
+    printf("%c", AS_CHARACTER(value));
+    break;
+  case VAL_INTEGER:
+    printf("%ld", AS_INTEGER(value));
+    break;
+  case VAL_FLOAT:
+    printf("%g", AS_FLOATING(value));
     break;
   case VAL_OBJ:
     printObject(value);
@@ -51,8 +57,10 @@ bool valuesEqual(Value a, Value b) {
     return AS_BOOL(a) == AS_BOOL(b);
   case VAL_NIL:
     return true;
-  case VAL_NUMBER:
-    return AS_NUMBER(a) == AS_NUMBER(b);
+  case VAL_INTEGER:
+    return AS_INTEGER(a) == AS_INTEGER(b);
+  case VAL_FLOAT:
+    return AS_FLOATING(a) == AS_FLOATING(b);
   case VAL_OBJ:
     return AS_OBJ(a) == AS_OBJ(b);
   default:

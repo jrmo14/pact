@@ -3,10 +3,16 @@
 ## Differences from book
 - [x] Arrays, cribbed from [here](https://calebschoepp.com/blog/2020/adding-a-list-data-type-to-lox/)
 - [ ] String indexing
-- [ ] Integer numbers
+- [x] Integer numbers
 - [ ] Bitwise operations
 - [ ] Separate compiler and interpreter
 - [ ] Compress chunks larger than 256 bytes
 - [x] User input native fn
 - [x] Number range native fn
+
+## TODO
+- [ ] Tests for new features
+  - [ ] String indexing
+  - [ ] Array addition
+  - [ ] Integer math
 
