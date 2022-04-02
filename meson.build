@@ -1,0 +1,5 @@
+project('pact', 'c')
+common_sources = files('src/chunk.c', 'src/debug.c', 'src/memory.c', 'src/object.c', 'src/table.c', 'src/value.c')
+compiler_srcs = files('src/scanner.c', 'src/compiler.c')
+vm_srcs = files('src/vm.c')
+interpreter = executable('pact', 'bins/interpreter.c', compiler_srcs, common_sources, vm_srcs)

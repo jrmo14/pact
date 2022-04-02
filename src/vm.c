@@ -194,7 +194,17 @@ static Value rangeNative(int argc, Value *args) {
     step = 1;
     break;
   }
-  size_t size = (stop - start) / step;
+
+  if (step == 0) {
+    runtimeError("Function 'range' requries step to be non-zero.");
+    return NIL_VAL;
+  }
+  if ((start > stop && step > 0) || (start < stop && step < 0)) {
+    runtimeError("Unterminated range.");
+    return NIL_VAL;
+  }
+
+  long size = (stop - start) / step;
   list->items = reallocate(list->items, sizeof(Value) * list->capcity,
                            sizeof(Value) * size);
   list->capcity = size;
@@ -241,6 +251,36 @@ static Value typeNative(int argc, Value *args) {
   return OBJ_VAL(copyString(type_str, type_len));
 }
 
+static Value chrNative(int argc, Value *args) {
+  if (argc != 1) {
+    runtimeError("Function 'chr' requires 1 argument, received %d.", argc);
+    return NIL_VAL;
+  }
+  if (!IS_INTEGER(args[0])) {
+    runtimeError("Function 'chr' requires first argument to be a character.");
+    return NIL_VAL;
+  }
+  long val = AS_INTEGER(args[0]);
+  if (val < 0 || val > 255) {
+    runtimeError("Cannot convert %ld to character, must be in [0, 255].", val);
+    return NIL_VAL;
+  }
+  return CHAR_VAL(val);
+}
+
+static Value ordNative(int argc, Value *args) {
+  if (argc != 1) {
+    runtimeError("Function 'ord' requires 1 argument, received %d.", argc);
+    return NIL_VAL;
+  }
+  if (!IS_CHARACTER(args[0])) {
+    runtimeError("Function 'ord' requires first argument to be an integer.");
+    return NIL_VAL;
+  }
+
+  return INTEGER_VAL(AS_CHARACTER(args[0]));
+}
+
 void initVM() {
   resetStack();
   vm.objects = NULL;
@@ -260,6 +300,8 @@ void initVM() {
   defineNative("input", inputNative);
   defineNative("range", rangeNative);
   defineNative("type", typeNative);
+  defineNative("chr", chrNative);
+  defineNative("ord", ordNative);
 }
 
 void freeVM() {
@@ -464,8 +506,7 @@ static InterpretResult run() {
         concatenateStrings();
       } else if (IS_LIST(peek(0)) && IS_LIST(peek(1))) {
         concatenateLists();
-      }
-      else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
+      } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
         BINARY_OP(+, false);
       } else {
         runtimeError("Operands must be two numbers or two strings.");
