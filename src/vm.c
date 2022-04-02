@@ -140,6 +140,69 @@ static Value inputNative(int argc, Value *args) {
   return OBJ_VAL(str);
 }
 
+static Value lenNative(int argc, Value *args) {
+  if (argc != 1) {
+    runtimeError("Function 'len' expects 1 argument, received %d.", argc);
+    return NIL_VAL;
+  }
+  if (IS_STRING(args[0])) {
+    ObjString *str = AS_STRING(args[0]);
+    return NUMBER_VAL(str->length);
+  } else if (IS_LIST(args[0])) {
+    ObjList *list = AS_LIST(args[0]);
+    return NUMBER_VAL(list->count);
+  } else {
+    runtimeError("Function 'len' expects list or string as first argument.");
+    return NIL_VAL;
+  }
+}
+
+static Value rangeNative(int argc, Value *args) {
+  if (argc == 0 || argc > 3) {
+    runtimeError("Function 'range' expects 1, 2, or 3 arguments, received %d.", argc);
+    return NIL_VAL;
+  }
+  for(int i = 0; i < argc; i++) {
+    if (!IS_NUMBER(args[i])) {
+      runtimeError("Function 'range' expect argument %d to be integer.", i);
+      return NIL_VAL;
+    }
+  }
+  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+  int start, stop, step;
+  switch(argc) {
+    case 1:
+      start = 0;
+      stop = AS_NUMBER(args[0]);
+      step = 1;
+      break;
+    case 2:
+      start = AS_NUMBER(args[0]);
+      stop = AS_NUMBER(args[1]);
+      step = 1;
+      break;
+    case 3:
+      start = AS_NUMBER(args[0]);
+      stop = AS_NUMBER(args[1]);
+      step = AS_NUMBER(args[2]);
+      break;
+    default: // Not possible, just so compiler doesn't complain
+      start = 0;
+      stop = 0;
+      step = 1;
+      break;
+  }
+  size_t size = (stop - start) / step;
+  list->items = reallocate(list->items, sizeof(Value) * list->capcity, sizeof(Value) * size);
+  list->capcity = size;
+  for(int i = 0; i < size; i++) {
+    list->items[i] = NUMBER_VAL(start);
+    start += step;
+  }
+  list->count = size;
+  return OBJ_VAL(list);
+}
+
 void initVM() {
   resetStack();
   vm.objects = NULL;
@@ -155,7 +218,9 @@ void initVM() {
   defineNative("clock", clockNative);
   defineNative("append", appendNative);
   defineNative("delete", deleteNative);
+  defineNative("len", lenNative);
   defineNative("input", inputNative);
+  defineNative("range", rangeNative);
 }
 
 void freeVM() {
