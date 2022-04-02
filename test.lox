@@ -1,0 +1,17 @@
+var counts = range(255);
+for (var i = 0; i < len(counts); i = i + 1) {
+  counts[i] = 0;
+}
+
+var usr_input = input();
+for (var i = 0; i < len(usr_input); i = i + 1) {
+  counts[ord(usr_input[i])] = counts[ord(usr_input[i])] + 1;
+}
+
+for (var i = 0; i < len(counts); i = i + 1) {
+  if (counts[i] > 0) {
+
+    print chr(i);
+    print counts[i];
+  }
+}

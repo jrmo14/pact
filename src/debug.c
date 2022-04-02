@@ -96,6 +96,16 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     return simpleInstruction("OP_MULTIPLY", offset);
   case OP_DIVIDE:
     return simpleInstruction("OP_DIVIDE", offset);
+  case OP_BIT_AND:
+    return simpleInstruction("OP_BIT_AND", offset);
+  case OP_BIT_XOR:
+    return simpleInstruction("OP_BIT_XOR", offset);
+  case OP_BIT_OR:
+    return simpleInstruction("OP_BIT_OR", offset);
+  case OP_LSL:
+    return simpleInstruction("OP_LSL", offset);
+  case OP_LSR:
+    return simpleInstruction("OP_LSR", offset);
   case OP_NOT:
     return simpleInstruction("OP_NOT", offset);
   case OP_NEGATE:

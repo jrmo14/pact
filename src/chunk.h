@@ -45,6 +45,11 @@ typedef enum {
   OP_BUILD_LIST,
   OP_INDEX_SUBSCR,
   OP_STORE_SUBSCR,
+  OP_BIT_XOR,
+  OP_BIT_OR,
+  OP_BIT_AND,
+  OP_LSL,
+  OP_LSR,
 } OpCode;
 
 typedef struct {

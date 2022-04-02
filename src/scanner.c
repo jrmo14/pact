@@ -223,15 +223,21 @@ Token scanToken() {
     return makeToken(TOKEN_SLASH);
   case '*':
     return makeToken(TOKEN_STAR);
+  case '^':
+    return makeToken(TOKEN_CARET);
   // Two character tokens
+  case '|':
+    return makeToken(match('|') ? TOKEN_OR : TOKEN_PIPE);
+  case '&':
+    return makeToken(match('&') ? TOKEN_AND : TOKEN_AMPERSAND);
   case '!':
     return makeToken(match('=') ? TOKEN_BANG_EQUAL : TOKEN_BANG);
   case '=':
     return makeToken(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
   case '<':
-    return makeToken(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+    return makeToken(match('=') ? TOKEN_LESS_EQUAL : match('<') ? TOKEN_LESS_LESS : TOKEN_LESS);
   case '>':
-    return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+    return makeToken(match('=') ? TOKEN_GREATER_EQUAL : match('>') ? TOKEN_GREATER_GREATER : TOKEN_GREATER);
   case '"':
     return string();
   }

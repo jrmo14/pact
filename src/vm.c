@@ -257,7 +257,7 @@ static Value chrNative(int argc, Value *args) {
     return NIL_VAL;
   }
   if (!IS_INTEGER(args[0])) {
-    runtimeError("Function 'chr' requires first argument to be a character.");
+    runtimeError("Function 'chr' requires first argument to be an integer.");
     return NIL_VAL;
   }
   long val = AS_INTEGER(args[0]);
@@ -274,11 +274,23 @@ static Value ordNative(int argc, Value *args) {
     return NIL_VAL;
   }
   if (!IS_CHARACTER(args[0])) {
-    runtimeError("Function 'ord' requires first argument to be an integer.");
+    runtimeError("Function 'ord' requires first argument to be a character.");
     return NIL_VAL;
   }
-
   return INTEGER_VAL(AS_CHARACTER(args[0]));
+}
+
+static Value intNative(int argc, Value *args) {
+  if (argc != 1) {
+    runtimeError("Function 'int' requires 1 argument, received %d.", argc);
+    return NIL_VAL;
+  }
+  if (!IS_FLOATING(args[0])) {
+    runtimeError("Function 'int' requires first argument to be a floating "
+                 "point number.");
+    return NIL_VAL;
+  }
+  return INTEGER_VAL((long)AS_FLOATING(args[0]));
 }
 
 void initVM() {
@@ -302,6 +314,7 @@ void initVM() {
   defineNative("type", typeNative);
   defineNative("chr", chrNative);
   defineNative("ord", ordNative);
+  defineNative("int", intNative);
 }
 
 void freeVM() {
@@ -345,14 +358,21 @@ static InterpretResult run() {
     }                                                                          \
   } while (false)
 
-#define BINARY_OP(op, require_int)                                             \
+#define BITWISE_OP(op)                                                         \
+  do {                                                                         \
+    if (!IS_INTEGER(peek(0)) || !IS_INTEGER(peek(1))) {                        \
+      runtimeError("Operands must be integers.");                              \
+      return INTERPRET_RUNTIME_ERROR;                                          \
+    }                                                                          \
+    long b = AS_INTEGER(pop());                                                \
+    long a = AS_INTEGER(pop());                                                \
+    push(INTEGER_VAL(a op b));                                                 \
+  } while (false)
+
+#define BINARY_OP(op)                                                          \
   do {                                                                         \
     if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {                          \
       runtimeError("Operands must be numbers.");                               \
-      return INTERPRET_RUNTIME_ERROR;                                          \
-    }                                                                          \
-    if ((!IS_INTEGER(peek(0)) || !IS_INTEGER(peek(1))) && require_int) {       \
-      runtimeError("Operation " #op " only supports integers.");               \
       return INTERPRET_RUNTIME_ERROR;                                          \
     }                                                                          \
     if (IS_INTEGER(peek(0)) && IS_INTEGER(peek(1))) {                          \
@@ -507,21 +527,37 @@ static InterpretResult run() {
       } else if (IS_LIST(peek(0)) && IS_LIST(peek(1))) {
         concatenateLists();
       } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
-        BINARY_OP(+, false);
+        BINARY_OP(+);
       } else {
-        runtimeError("Operands must be two numbers or two strings.");
+        runtimeError(
+            "Operands must be two numbers, two lists, or two strings.");
         return INTERPRET_RUNTIME_ERROR;
       }
       break;
     }
     case OP_SUBTRACT:
-      BINARY_OP(-, false);
+      BINARY_OP(-);
       break;
     case OP_MULTIPLY:
-      BINARY_OP(*, false);
+      BINARY_OP(*);
       break;
     case OP_DIVIDE:
-      BINARY_OP(/, false);
+      BINARY_OP(/);
+      break;
+    case OP_BIT_AND:
+      BITWISE_OP(&);
+      break;
+    case OP_BIT_OR:
+      BITWISE_OP(|);
+      break;
+    case OP_BIT_XOR:
+      BITWISE_OP(^);
+      break;
+    case OP_LSL:
+      BITWISE_OP(<<);
+      break;
+    case OP_LSR:
+      BITWISE_OP(>>);
       break;
     case OP_NOT:
       push(BOOL_VAL(isFalsey(pop())));
@@ -650,31 +686,45 @@ static InterpretResult run() {
       break;
     }
     case OP_INDEX_SUBSCR: {
+      // Don't need to check b/c we're gonna trust the compiler
       Value idx_val = pop();
       Value list_val = pop();
-      Value rv;
+      if (IS_LIST(list_val)) {
+        Value rv;
+        ObjList *list = AS_LIST(list_val);
+        if (!IS_NUMBER(idx_val)) {
+          runtimeError("List index is not a number.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        int idx;
+        if (idx_val.type == VAL_FLOAT) {
+          idx = (int)idx_val.as.floating;
+        } else {
+          idx = (int)idx_val.as.integer;
+        }
 
-      if (!IS_LIST(list_val)) {
-        runtimeError("Invalid list to index into.");
-        return INTERPRET_RUNTIME_ERROR;
-      }
-      ObjList *list = AS_LIST(list_val);
-      if (!IS_NUMBER(idx_val)) {
-        runtimeError("List index is not a number.");
-        return INTERPRET_RUNTIME_ERROR;
-      }
-      int idx;
-      if (idx_val.type == VAL_FLOAT) {
-        idx = (int)idx_val.as.floating;
+        if (indexFromList(list, idx, &rv)) {
+          runtimeError("List index out of range");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        push(rv);
+      } else if (IS_STRING(list_val)) {
+        ObjString *str = AS_STRING(list_val);
+        int idx;
+        if (idx_val.type == VAL_FLOAT) {
+          idx = (int)idx_val.as.floating;
+        } else {
+          idx = (int)idx_val.as.integer;
+        }
+        if (str->length <= idx || idx < 0) {
+          runtimeError("List index out of range");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        push(CHAR_VAL(str->chars[idx]));
       } else {
-        idx = (int)idx_val.as.integer;
-      }
-
-      if (indexFromList(list, idx, &rv)) {
-        runtimeError("List index out of range");
+        runtimeError("Unable to index into value.");
         return INTERPRET_RUNTIME_ERROR;
       }
-      push(rv);
       break;
     }
     case OP_STORE_SUBSCR: {

@@ -30,7 +30,9 @@ static uint8_t identifierConstant(Token *name);
 static int resolveLocal(Compiler *compiler, Token *name);
 static int resolveUpvalue(Compiler *compiler, Token *name);
 
-static Chunk *currentChunk() { return &current->function->chunk; }
+static Chunk *currentChunk() {
+  return &current->function->chunk;
+}
 
 static void errorAt(Token *token, const char *message) {
   if (parser.panicMode) {
@@ -815,6 +817,21 @@ static void binary(bool _) {
   case TOKEN_SLASH:
     emitByte(OP_DIVIDE);
     break;
+  case TOKEN_CARET:
+    emitByte(OP_BIT_XOR);
+    break;
+  case TOKEN_PIPE:
+    emitByte(OP_BIT_OR);
+    break;
+  case TOKEN_AMPERSAND:
+    emitByte(OP_BIT_AND);
+    break;
+  case TOKEN_GREATER_GREATER:
+    emitByte(OP_LSR);
+    break;
+  case TOKEN_LESS_LESS:
+    emitByte(OP_LSR);
+    break;
   default:
     return;
   }
@@ -901,6 +918,11 @@ ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_CARET] = {NULL, binary, PREC_BIT_XOR},
+    [TOKEN_PIPE] = {NULL, binary, PREC_BIT_OR},
+    [TOKEN_AMPERSAND] = {NULL, binary, PREC_BIT_AND},
+    [TOKEN_GREATER_GREATER] = {NULL, binary, PREC_SHIFT},
+    [TOKEN_LESS_LESS] = {NULL, binary, PREC_SHIFT},
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
