@@ -99,6 +99,12 @@ static void freeObject(Obj *obj) {
     FREE(ObjString, obj);
     break;
   }
+  case OBJ_LIST: {
+    ObjList *list = (ObjList *)obj;
+    FREE_ARRAY(Value *, list->items, list->count);
+    FREE(ObjList, obj);
+    break;
+  }
   case OBJ_UPVALUE:
     FREE(ObjUpvalue, obj);
     break;
@@ -176,6 +182,13 @@ static void blackenObject(Obj *obj) {
     ObjBoundMethod *bound = (ObjBoundMethod *)obj;
     markValue(bound->receiver);
     markObject((Obj *)bound->method);
+    break;
+  }
+  case OBJ_LIST: {
+    ObjList *list = (ObjList *)obj;
+    for (int i = 0; i < list->count; i++) {
+      markValue(list->items[i]);
+    }
     break;
   }
   case OBJ_NATIVE:

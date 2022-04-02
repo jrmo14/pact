@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "compiler.h"
 #include "memory.h"
@@ -75,6 +76,70 @@ static void defineNative(const char *name, NativeFn function) {
   pop();
 }
 
+static Value appendNative(int argc, Value *args) {
+  if (argc != 2) {
+    runtimeError("Function 'append' requires 2 arguments, received %d", argc);
+    return NIL_VAL;
+  }
+  if (!IS_LIST(args[0])) {
+    runtimeError("Function 'append' requires first argument to be a list.");
+    return NIL_VAL;
+  }
+  ObjList *list = AS_LIST(args[0]);
+  appendToList(list, args[1]);
+  return NIL_VAL;
+}
+
+static Value deleteNative(int argc, Value *args) {
+  if (argc != 2) {
+    runtimeError("Function 'append' requires 2 arguments, received %d", argc);
+    return NIL_VAL;
+  }
+  if (!IS_LIST(args[0])) {
+    runtimeError("Function 'delete' requires first argument to be a list");
+    return NIL_VAL;
+  }
+  if (!IS_NUMBER(args[1])) {
+    runtimeError("Function 'delete' requires second argument to be a number");
+    return NIL_VAL;
+  }
+
+  ObjList *list = AS_LIST(args[0]);
+  int idx = AS_NUMBER(args[1]);
+
+  if (deleteFromList(list, idx)) {
+    runtimeError("Cannot delete, no element at index %d", idx);
+  }
+  return NIL_VAL;
+}
+
+static Value inputNative(int argc, Value *args) {
+  if (argc != 0) {
+    runtimeError("Function 'input' takes no arguments.");
+    return NIL_VAL;
+  }
+  ObjString *str = ALLOCATE_OBJ(ObjString, OBJ_STRING);
+  str->length = 0;
+
+  char c;
+  size_t cnt = 0;
+  while (read(1, &c, 1) == 1) {
+    if (cnt >= str->length) {
+      int oldSize = str->length;
+      str->chars = reallocate(str->chars, oldSize, GROW_CAPACITY(oldSize));
+    }
+    if (c == '\n' || c == '\0') {
+      str->chars[cnt] = 0;
+      break;
+    }
+    str->chars[cnt++] = c;
+  }
+  str->chars[cnt] = 0;
+  str->hash = hashString(str->chars, cnt);
+  str->length = cnt;
+  return OBJ_VAL(str);
+}
+
 void initVM() {
   resetStack();
   vm.objects = NULL;
@@ -88,6 +153,9 @@ void initVM() {
   vm.initString = NULL;
   vm.initString = copyString("init", 4);
   defineNative("clock", clockNative);
+  defineNative("append", appendNative);
+  defineNative("delete", deleteNative);
+  defineNative("input", inputNative);
 }
 
 void freeVM() {
@@ -371,6 +439,64 @@ static InterpretResult run() {
     case OP_METHOD:
       defineMethod(READ_STRING());
       break;
+    case OP_BUILD_LIST: {
+      ObjList *list = newList();
+      uint8_t itemCount = READ_BYTE();
+      push(OBJ_VAL(list));
+      for (int i = itemCount; i > 0; i--) {
+        appendToList(list, peek(i));
+      }
+      pop();
+      while (itemCount-- > 0) {
+        pop();
+      }
+      push(OBJ_VAL(list));
+      break;
+    }
+    case OP_INDEX_SUBSCR: {
+      Value idx_val = pop();
+      Value list_val = pop();
+      Value rv;
+
+      if (!IS_LIST(list_val)) {
+        runtimeError("Invalid list to index into.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      ObjList *list = AS_LIST(list_val);
+      if (!IS_NUMBER(idx_val)) {
+        runtimeError("List index is not a number.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      int idx = AS_NUMBER(idx_val);
+
+      if (indexFromList(list, idx, &rv)) {
+        runtimeError("List index out of range");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      push(rv);
+      break;
+    }
+    case OP_STORE_SUBSCR: {
+      Value item = pop();
+      Value index_val = pop();
+      Value list_val = pop();
+      if (!IS_LIST(list_val)) {
+        runtimeError("Cannot store value in non-list.");
+      }
+      if (!IS_NUMBER(index_val)) {
+        runtimeError("List index is not a number.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      ObjList *list = AS_LIST(list_val);
+      int index = AS_NUMBER(index_val);
+
+      if (storeToList(list, index, item)) {
+        runtimeError("Invalid list index.");
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      push(item);
+      break;
+    }
     }
   }
 #undef READ_CONSTANT

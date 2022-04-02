@@ -13,6 +13,7 @@
 #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
 #define IS_INSTANCE(value) isObjType(value, OBJ_INSTANCE)
 #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
+#define IS_LIST(value) isObjType(value, OBJ_LIST)
 
 #define AS_NATIVE(value) (((ObjNative *)AS_OBJ(value))->function)
 #define AS_STRING(value) ((ObjString *)AS_OBJ(value))
@@ -22,6 +23,7 @@
 #define AS_CLASS(value) ((ObjClass *)AS_OBJ(value))
 #define AS_INSTANCE(value) ((ObjInstance *)AS_OBJ(value))
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod *)AS_OBJ(value))
+#define AS_LIST(value) ((ObjList *)AS_OBJ(value))
 
 typedef enum {
   OBJ_FUNCTION,
@@ -31,6 +33,7 @@ typedef enum {
   OBJ_UPVALUE,
   OBJ_CLASS,
   OBJ_INSTANCE,
+  OBJ_LIST,
   OBJ_BOUND_METHOD,
 } ObjType;
 
@@ -87,6 +90,13 @@ typedef struct {
   ObjClosure *method;
 } ObjBoundMethod;
 
+typedef struct {
+  Obj obj;
+  int count;
+  int capcity;
+  Value *items;
+} ObjList;
+
 typedef Value (*NativeFn)(int argc, Value *args);
 
 typedef struct {
@@ -94,6 +104,10 @@ typedef struct {
   NativeFn function;
 } ObjNative;
 
+#define ALLOCATE_OBJ(type, objectType)                                         \
+  (type *)allocateObject(sizeof(type), objectType)
+
+Obj *allocateObject(size_t size, ObjType type);
 ObjClass *newClass(ObjString *name);
 ObjClosure *newClosure(ObjFunction *function);
 ObjFunction *newFunction();
@@ -102,9 +116,18 @@ ObjUpvalue *newUpvalue(Value *slot);
 ObjInstance *newInstance(ObjClass *klass);
 ObjBoundMethod *newBoundMethod(Value receiver, ObjClosure *method);
 
+// List
+ObjList *newList();
+void appendToList(ObjList *list, Value value);
+int storeToList(ObjList *list, int index, Value value);
+int indexFromList(ObjList *list, int index, Value *value_str);
+int deleteFromList(ObjList *list, int idx);
+
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 void printObject(Value value);
+
+uint32_t hashString(const char *key, int length);
 
 static inline bool isObjType(Value v, ObjType t) {
   return IS_OBJ(v) && AS_OBJ(v)->type == t;

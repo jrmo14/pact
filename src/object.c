@@ -10,10 +10,7 @@
 #include "value.h"
 #include "vm.h"
 
-#define ALLOCATE_OBJ(type, objectType)                                         \
-  (type *)allocateObject(sizeof(type), objectType)
-
-static Obj *allocateObject(size_t size, ObjType type) {
+Obj *allocateObject(size_t size, ObjType type) {
   Obj *obj = (Obj *)reallocate(NULL, 0, size);
   obj->type = type;
 
@@ -54,6 +51,63 @@ ObjNative *newNative(NativeFn func) {
   return native;
 }
 
+ObjList *newList() {
+  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+  list->items = NULL;
+  list->count = 0;
+  list->capcity = 0;
+  return list;
+}
+
+void appendToList(ObjList *list, Value value) {
+  if (list->capcity < list->count + 1) {
+    int oldCap = list->capcity;
+    list->capcity = GROW_CAPACITY(oldCap);
+    list->items = GROW_ARRAY(Value, list->items, oldCap, list->capcity);
+  }
+  list->items[list->count++] = value;
+}
+
+int storeToList(ObjList *list, int index, Value value) {
+  if (index < 0) {
+    index = list->count - index;
+  }
+  if (index < list->count && index >= 0) {
+    list->items[index] = value;
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
+int indexFromList(ObjList *list, int index, Value *val_str) {
+  if (index < 0) {
+    index = list->count - index;
+  }
+  if (index < list->count && index >= 0) {
+    *val_str = list->items[index];
+    return 0;
+  } else {
+    *val_str = NIL_VAL;
+    return 1;
+  }
+}
+
+int deleteFromList(ObjList *list, int idx) {
+  if (idx < 0) {
+    idx = list->count - idx;
+  }
+  if (idx < list->count && idx >= 0) {
+    for (int i = idx; i < list->count - 1; i++) {
+      list->items[i] = list->items[i + 1];
+    }
+    list->items[--list->count] = NIL_VAL;
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
 static ObjString *allocateString(char *chars, int length, uint32_t hash) {
   ObjString *string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
   string->length = length;
@@ -66,7 +120,7 @@ static ObjString *allocateString(char *chars, int length, uint32_t hash) {
   return string;
 }
 
-static uint32_t hashString(const char *key, int length) {
+uint32_t hashString(const char *key, int length) {
   uint32_t hash = 2166136261u;
   for (int i = 0; i < length; i++) {
     hash ^= (uint8_t)key[i];
@@ -134,6 +188,18 @@ static void printFunction(ObjFunction *func) {
   printf("<fn %s>", func->name->chars);
 }
 
+static void printList(ObjList *list) {
+  printf("[");
+  for (int i = 0; i < list->count - 1; i++) {
+    printValue(list->items[i]);
+    printf(", ");
+  }
+  if (list->count) {
+    printValue(list->items[list->count - 1]);
+  }
+  printf("]\n");
+}
+
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
   case OBJ_CLASS:
@@ -156,6 +222,9 @@ void printObject(Value value) {
     break;
   case OBJ_UPVALUE:
     printf("upvalue");
+    break;
+  case OBJ_LIST:
+    printList(AS_LIST(value));
     break;
   case OBJ_BOUND_METHOD:
     printFunction(AS_BOUND_METHOD(value)->method->function);
