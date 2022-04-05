@@ -134,7 +134,9 @@ static void markRoots() {
     markObject((Obj *)upvalue);
   }
   markTable(&vm.globals);
+#ifndef VM_ONLY
   markCompilerRoots();
+#endif
   markObject((Obj *)vm.initString);
 }
 

@@ -14,4 +14,4 @@ compiler_srcs = files(
 )
 interpreter = executable('pact', 'bins/interpreter.c', compiler_srcs, common_srcs)
 compiler = executable('pactc', 'bins/compiler.c', compiler_srcs, common_srcs)
-#vm = executable('pactvm', 'bins/vm.c', common_srcs)
+vm = executable('pactvm', 'bins/vm.c', common_srcs, c_args: ['-DVM_ONLY'])

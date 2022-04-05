@@ -18,12 +18,9 @@
 #endif
 
 VM vm;
-static Value clockNative(int argCount, Value *args) {
-  return FLOAT_VAL((double)clock() / CLOCKS_PER_SEC);
-}
+
 
 static Value peek(int distance);
-static bool call(ObjClosure *function, int argCount);
 static bool callValue(Value callee, int argCount);
 static bool invoke(ObjString *name, int argCount);
 static bool invokeFromClass(ObjClass *clazz, ObjString *name, int argCount);
@@ -69,17 +66,14 @@ static void runtimeError(const char *format, ...) {
   resetStack();
 }
 
-static void defineNative(const char *name, NativeFn function) {
-  push(OBJ_VAL(copyString(name, (int)strlen(name))));
-  push(OBJ_VAL(newNative(function)));
-  tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
-  pop();
-  pop();
+
+static Value clockNative(int argCount, Value *args) {
+  return FLOAT_VAL((double)clock() / CLOCKS_PER_SEC);
 }
 
 static Value appendNative(int argc, Value *args) {
   if (argc != 2) {
-    runtimeError("Function 'append' requires 2 arguments, received %d", argc);
+    runtimeError("Function 'append' requires 2 arguments.");
     return NIL_VAL;
   }
   if (!IS_LIST(args[0])) {
@@ -93,7 +87,7 @@ static Value appendNative(int argc, Value *args) {
 
 static Value deleteNative(int argc, Value *args) {
   if (argc != 2) {
-    runtimeError("Function 'append' requires 2 arguments, received %d", argc);
+    runtimeError("Function 'append' requires 2 arguments.");
     return NIL_VAL;
   }
   if (!IS_LIST(args[0])) {
@@ -109,7 +103,7 @@ static Value deleteNative(int argc, Value *args) {
   int idx = AS_INTEGER(args[1]);
 
   if (deleteFromList(list, idx)) {
-    runtimeError("Cannot delete, no element at index %d", idx);
+    runtimeError("Cannot delete, index out of range.");
   }
   return NIL_VAL;
 }
@@ -143,7 +137,7 @@ static Value inputNative(int argc, Value *args) {
 
 static Value lenNative(int argc, Value *args) {
   if (argc != 1) {
-    runtimeError("Function 'len' expects 1 argument, received %d.", argc);
+    runtimeError("Function 'len' expects 1 argument");
     return NIL_VAL;
   }
   if (IS_STRING(args[0])) {
@@ -160,13 +154,12 @@ static Value lenNative(int argc, Value *args) {
 
 static Value rangeNative(int argc, Value *args) {
   if (argc == 0 || argc > 3) {
-    runtimeError("Function 'range' expects 1, 2, or 3 arguments, received %d.",
-                 argc);
+    runtimeError("Function 'range' expects 1, 2, or 3 arguments");
     return NIL_VAL;
   }
   for (int i = 0; i < argc; i++) {
     if (!IS_INTEGER(args[i])) {
-      runtimeError("Function 'range' expect argument %d to be integer.", i);
+      runtimeError("Function 'range' expects integer arguments.");
       return NIL_VAL;
     }
   }
@@ -253,7 +246,7 @@ static Value typeNative(int argc, Value *args) {
 
 static Value chrNative(int argc, Value *args) {
   if (argc != 1) {
-    runtimeError("Function 'chr' requires 1 argument, received %d.", argc);
+    runtimeError("Function 'chr' requires 1 argument");
     return NIL_VAL;
   }
   if (!IS_INTEGER(args[0])) {
@@ -262,7 +255,7 @@ static Value chrNative(int argc, Value *args) {
   }
   long val = AS_INTEGER(args[0]);
   if (val < 0 || val > 255) {
-    runtimeError("Cannot convert %ld to character, must be in [0, 255].", val);
+    runtimeError("Cannot convert to character, must be in [0, 255].");
     return NIL_VAL;
   }
   return CHAR_VAL(val);
@@ -270,7 +263,7 @@ static Value chrNative(int argc, Value *args) {
 
 static Value ordNative(int argc, Value *args) {
   if (argc != 1) {
-    runtimeError("Function 'ord' requires 1 argument, received %d.", argc);
+    runtimeError("Function 'ord' requires 1 argument");
     return NIL_VAL;
   }
   if (!IS_CHARACTER(args[0])) {
@@ -282,15 +275,22 @@ static Value ordNative(int argc, Value *args) {
 
 static Value intNative(int argc, Value *args) {
   if (argc != 1) {
-    runtimeError("Function 'int' requires 1 argument, received %d.", argc);
+    runtimeError("Function 'int' requires 1 argument.");
     return NIL_VAL;
   }
   if (!IS_FLOATING(args[0])) {
-    runtimeError("Function 'int' requires first argument to be a floating "
-                 "point number.");
+    runtimeError("Function 'int' requires first argument to be a floating point number.");
     return NIL_VAL;
   }
   return INTEGER_VAL((long)AS_FLOATING(args[0]));
+}
+
+static void defineNative(const char *name, NativeFn function) {
+  push(OBJ_VAL(copyString(name, (int)strlen(name))));
+  push(OBJ_VAL(newNative(function)));
+  tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+  pop();
+  pop();
 }
 
 void initVM() {
@@ -308,8 +308,8 @@ void initVM() {
   defineNative("clock", clockNative);
   defineNative("append", appendNative);
   defineNative("delete", deleteNative);
-  defineNative("len", lenNative);
   defineNative("input", inputNative);
+  defineNative("len", lenNative);
   defineNative("range", rangeNative);
   defineNative("type", typeNative);
   defineNative("chr", chrNative);
@@ -324,7 +324,7 @@ void freeVM() {
   freeObjects();
 }
 
-static InterpretResult run() {
+InterpretResult run() {
   CallFrame *frame = &vm.frames[vm.frameCount - 1];
 
 #define READ_BYTE() (*frame->ip++)
@@ -761,6 +761,7 @@ static InterpretResult run() {
 #undef READ_STRING
 }
 
+#ifndef VM_ONLY
 InterpretResult interpret(const char *src) {
   ObjFunction *function = compile(src);
   if (function == NULL) {
@@ -770,10 +771,11 @@ InterpretResult interpret(const char *src) {
   ObjClosure *closure = newClosure(function);
   pop();
   push(OBJ_VAL(closure));
-  call(closure, 0);
+  callClosure(closure, 0);
 
   return run();
 }
+#endif
 
 void push(Value value) {
   *vm.stackTop = value;
@@ -825,7 +827,7 @@ static void concatenateLists() {
   push(OBJ_VAL(result));
 }
 
-static bool call(ObjClosure *closure, int argCount) {
+bool callClosure(ObjClosure *closure, int argCount) {
   if (argCount != closure->function->arity) {
     runtimeError("Expected %d arguments but got %d.", closure->function->arity,
                  argCount);
@@ -853,13 +855,13 @@ static bool callValue(Value callee, int argCount) {
       return true;
     }
     case OBJ_CLOSURE:
-      return call(AS_CLOSURE(callee), argCount);
+      return callClosure(AS_CLOSURE(callee), argCount);
     case OBJ_CLASS: {
       ObjClass *klass = AS_CLASS(callee);
       vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
       Value initializer;
       if (tableGet(&klass->methods, vm.initString, &initializer)) {
-        return call(AS_CLOSURE(initializer), argCount);
+        return callClosure(AS_CLOSURE(initializer), argCount);
       } else if (argCount != 0) {
         runtimeError("Expected 0 arguments but got %d.", argCount);
         return false;
@@ -869,7 +871,7 @@ static bool callValue(Value callee, int argCount) {
     case OBJ_BOUND_METHOD: {
       ObjBoundMethod *bound = AS_BOUND_METHOD(callee);
       vm.stackTop[-argCount - 1] = bound->receiver;
-      return call(bound->method, argCount);
+      return callClosure(bound->method, argCount);
     }
     default:
       break;
@@ -885,7 +887,7 @@ static bool invokeFromClass(ObjClass *clazz, ObjString *name, int argCount) {
     runtimeError("Undefined property '%s'.", name->chars);
     return false;
   }
-  return call(AS_CLOSURE(method), argCount);
+  return callClosure(AS_CLOSURE(method), argCount);
 }
 
 static bool invoke(ObjString *name, int argCount) {

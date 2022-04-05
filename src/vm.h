@@ -46,6 +46,8 @@ extern VM vm;
 void initVM();
 void freeVM();
 InterpretResult interpret(const char *src);
+InterpretResult run();
+bool callClosure(ObjClosure *closure, int argCount);
 void push(Value value);
 Value pop();
 #endif
