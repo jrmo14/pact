@@ -165,11 +165,13 @@ static void blackenObject(Obj *obj) {
     for (int i = 0; i < closure->upvalueCount; i++) {
       markObject((Obj *)closure->upvalues[i]);
     }
+    break;
   }
   case OBJ_FUNCTION: {
     ObjFunction *func = (ObjFunction *)obj;
     markObject((Obj *)func->name);
     markArray(&func->chunk.constants);
+    break;
   }
   case OBJ_INSTANCE: {
     ObjInstance *inst = (ObjInstance *)obj;
