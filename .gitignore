@@ -3,3 +3,4 @@ compile_commands.json
 perf.data
 build
 .gdb_history
+*.pactb

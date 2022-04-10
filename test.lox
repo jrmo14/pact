@@ -22,20 +22,34 @@ class Looper {
 
 }
 
-fun testFN() {
-  print "HELLO";
-}
-
-fun testNF(a, b) {
-  fun test_inner(z) {
-    return a + z * b;
-  }
-  print a + b;
-  return test_inner;
-}
-
 var looper = Looper();
 looper.get_input();
 looper.print_histogram();
-var inner = testNF(1, 2);
-print inner(6);
+//fun init() {
+//  var counts = range(255);
+//  for (var i = 0; i < len(counts); i = i + 1) {
+//    counts[i] = 0;
+//  }
+//  return counts;
+//}
+//
+//fun get_input() {
+//  var counts = init();
+//  var usr_input = input();
+//  for (var i = 0; i < len(usr_input); i = i + 1) {
+//    counts[ord(usr_input[i])] = counts[ord(usr_input[i])] + 1;
+//  }
+//  return counts;
+//}
+//
+//fun print_histogram(counts) {
+//  for (var i = 0; i < len(counts); i = i + 1) {
+//    if (counts[i] > 0) {
+//      print chr(i);
+//      print counts[i];
+//    }
+//  }
+//}
+//
+//var counts = get_input();
+//int_histogram(counts);

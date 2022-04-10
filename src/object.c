@@ -17,7 +17,36 @@ Obj *allocateObject(size_t size, ObjType type) {
   obj->next = vm.objects;
 
 #ifdef DEBUG_LOG_GC
-  printf("%p allocate %zu for %d\n", (void *)obj, size, type);
+  printf("%p allocate %zu for ", (void *)obj, size);
+  switch (type){
+    case OBJ_FUNCTION:
+      printf("OBJ_FUNCTION\n");
+      break;
+    case OBJ_CLOSURE:
+      printf("OBJ_CLOSURE\n");
+      break;
+    case OBJ_NATIVE:
+      printf("OBJ_NATIVE\n");
+      break;
+    case OBJ_STRING:
+      printf("OBJ_STRING\n");
+      break;
+    case OBJ_UPVALUE:
+      printf("OBJ_UPVALUE\n");
+      break;
+    case OBJ_CLASS:
+      printf("OBJ_CLASS\n");
+      break;
+    case OBJ_INSTANCE:
+      printf("OBJ_INSTANCE\n");
+      break;
+    case OBJ_LIST:
+      printf("OBJ_LIST\n");
+      break;
+    case OBJ_BOUND_METHOD:
+      printf("OBJ_BOUND_METHOD\n");
+      break;
+  }
 #endif
 
   vm.objects = obj;

@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -113,25 +114,23 @@ static Value inputNative(int argc, Value *args) {
     runtimeError("Function 'input' takes no arguments.");
     return NIL_VAL;
   }
-  ObjString *str = ALLOCATE_OBJ(ObjString, OBJ_STRING);
-  str->length = 0;
-
+  size_t buf_cap = 16;
+  char *buf = malloc(sizeof(char) * buf_cap);
   char c;
   size_t cnt = 0;
   while (read(1, &c, 1) == 1) {
-    if (cnt >= str->length) {
-      int oldSize = str->length;
-      str->chars = reallocate(str->chars, oldSize, GROW_CAPACITY(oldSize));
+    if (cnt >= buf_cap) {
+      buf_cap = GROW_CAPACITY(buf_cap);
+      buf = realloc(buf, buf_cap);
     }
     if (c == '\n' || c == '\0') {
-      str->chars[cnt] = 0;
+      buf[cnt] = 0;
       break;
     }
-    str->chars[cnt++] = c;
+    buf[cnt++] = c;
   }
-  str->chars[cnt] = 0;
-  str->hash = hashString(str->chars, cnt);
-  str->length = cnt;
+  ObjString *str = copyString(buf, cnt);
+  free(buf);
   return OBJ_VAL(str);
 }
 
@@ -393,7 +392,6 @@ InterpretResult run() {
       push(FLOAT_VAL(a op b));                                                 \
     }                                                                          \
   } while (false)
-
   for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
     printf("          ");

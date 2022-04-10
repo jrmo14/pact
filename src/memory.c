@@ -3,6 +3,7 @@
 
 #include "compiler.h"
 #include "memory.h"
+#include "src/object.h"
 #include "table.h"
 #include "value.h"
 #include "vm.h"
@@ -62,7 +63,36 @@ void markObject(Obj *obj) {
 
 static void freeObject(Obj *obj) {
 #ifdef DEBUG_LOG_GC
-  printf("%p free type %d\n", (void *)obj, obj->type);
+  printf("%p free type ", (void *)obj);
+  switch (obj->type) {
+    case OBJ_FUNCTION:
+      printf("OBJ_FUNCTION\n");
+      break;
+    case OBJ_CLOSURE:
+      printf("OBJ_CLOSURE\n");
+      break;
+    case OBJ_NATIVE:
+      printf("OBJ_NATIVE\n");
+      break;
+    case OBJ_STRING:
+      printf("OBJ_STRING\n");
+      break;
+    case OBJ_UPVALUE:
+      printf("OBJ_UPVALUE\n");
+      break;
+    case OBJ_CLASS:
+      printf("OBJ_CLASS\n");
+      break;
+    case OBJ_INSTANCE:
+      printf("OBJ_INSTANCE\n");
+      break;
+    case OBJ_LIST:
+      printf("OBJ_LIST\n");
+      break;
+    case OBJ_BOUND_METHOD:
+      printf("OBJ_BOUND_METHOD\n");
+      break;
+  }
 #endif
   switch (obj->type) {
   case OBJ_CLASS: {

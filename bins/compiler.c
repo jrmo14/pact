@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+FILE *output_file;
+
 static char *readFile(const char *path) {
   FILE *file = fopen(path, "rb");
   if (!file) {
@@ -65,56 +67,75 @@ void freeBuffer() { free(bytes.buf); }
 // Should only need to save functions and strings, the vm can rebuild everything
 // else from that
 
-void writeString(ObjString *str) {
+void write_string(ObjString *str) {
   int tmp = OBJ_STRING;
-  writeBuffer(&tmp, sizeof(int), 1);
-  writeBuffer(&str->length, sizeof(int), 1);
-  writeBuffer(str->chars, sizeof(char), str->length);
+  fwrite(&tmp, sizeof(int), 1, output_file);
+  fwrite(&str->length, sizeof(int), 1, output_file);
+  fwrite(str->chars, sizeof(char), str->length, output_file);
 }
 
-void writeFunction(ObjFunction *f);
+void write_function(ObjFunction *f);
 
-void writeValue(Value v) {
+void write_value(Value v) {
   int tmp = v.type;
-  writeBuffer(&tmp, sizeof(int), 1);
+  fwrite(&tmp, sizeof(int), 1, output_file);
   switch (v.type) {
-  case VAL_BOOL:
-  case VAL_CHARACTER:
-  case VAL_NIL: {
+  case VAL_BOOL: {
+    bool tmp = (bool)v.as.boolean;
+    fwrite(&tmp, sizeof(bool), 1, output_file);
+  }
+  case VAL_CHARACTER: {
     uint8_t tmp = (uint8_t)v.as.character;
-    writeBuffer(&tmp, sizeof(uint8_t), 1);
+    fwrite(&tmp, sizeof(uint8_t), 1, output_file);
     break;
   }
-  case VAL_INTEGER:
-  case VAL_FLOAT: {
+  case VAL_NIL: {
     uint64_t tmp = (uint64_t)v.as.integer;
-    writeBuffer(&tmp, sizeof(uint64_t), 1);
+    fwrite(&tmp, sizeof(uint64_t), 1, output_file);
+    break;
+  }
+  case VAL_INTEGER: {
+    uint64_t tmp = (uint64_t)v.as.integer;
+    fwrite(&tmp, sizeof(uint64_t), 1, output_file);
+    break;
+  }
+  case VAL_FLOAT: {
+    double tmp = (uint64_t)v.as.floating;
+    fwrite(&tmp, sizeof(double), 1, output_file);
     break;
   }
   case VAL_OBJ:
     if (IS_STRING(v)) {
-      writeString(AS_STRING(v));
+      write_string(AS_STRING(v));
     } else if (IS_FUNCTION(v)) {
-      writeFunction(AS_FUNCTION(v));
+      write_function(AS_FUNCTION(v));
     } else {
-      printf("SHIT\n");
+      fprintf(stderr, "SHIT\n");
     };
     break;
   }
 }
 
-void writeFunction(ObjFunction *f) {
+void write_function(ObjFunction *f) {
   int tmp = OBJ_FUNCTION;
-  writeBuffer(&tmp, sizeof(int), 1);
-  writeBuffer(&f->arity,sizeof(int),1);
-  writeBuffer(&f->upvalueCount,sizeof(int),1);
-  writeBuffer(&f->chunk.count, sizeof(int), 1);
-  writeBuffer(f->chunk.code, sizeof(uint8_t), f->chunk.count);
-  writeBuffer(f->chunk.lines, sizeof(int), f->chunk.count);
-  writeBuffer(&f->chunk.constants.count, sizeof(int), 1);
+  fwrite(&tmp, sizeof(int), 1, output_file);
+  fwrite(&f->arity, sizeof(int), 1, output_file);
+  fwrite(&f->upvalueCount, sizeof(int), 1, output_file);
+  fwrite(&f->chunk.count, sizeof(int), 1, output_file);
+  fwrite(f->chunk.code, sizeof(uint8_t), f->chunk.count, output_file);
+  fwrite(f->chunk.lines, sizeof(int), f->chunk.count, output_file);
+  fwrite(&f->chunk.constants.count, sizeof(int), 1, output_file);
   for (int i = 0; i < f->chunk.constants.count; i++) {
     Value v = f->chunk.constants.values[i];
-    writeValue(v);
+    write_value(v);
+  }
+  if (f->name) {
+    uint8_t marker = 1;
+    fwrite(&marker, sizeof(uint8_t), 1, output_file);
+    write_string(f->name);
+  } else {
+    uint8_t marker = 0;
+    fwrite(&marker, sizeof(uint8_t), 1, output_file);
   }
 }
 
@@ -124,7 +145,11 @@ int main(int arg, char **argv) {
   char *src = readFile(argv[1]);
   ObjFunction *func = compile(src);
   initBuffer();
-  writeFunction(func);
+  output_file = fopen("out.pactb", "wb");
+  int tmp = VAL_OBJ;
+  fwrite(&tmp, sizeof(int), 1, output_file);
+  write_function(func);
+  fclose(output_file);
   freeBuffer();
   free(src);
   freeVM();
