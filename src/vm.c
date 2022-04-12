@@ -20,7 +20,6 @@
 
 VM vm;
 
-
 static Value peek(int distance);
 static bool callValue(Value callee, int argCount);
 static bool invoke(ObjString *name, int argCount);
@@ -67,7 +66,6 @@ static void runtimeError(const char *format, ...) {
   resetStack();
 }
 
-
 static Value clockNative(int argCount, Value *args) {
   return FLOAT_VAL((double)clock() / CLOCKS_PER_SEC);
 }
@@ -110,9 +108,16 @@ static Value deleteNative(int argc, Value *args) {
 }
 
 static Value inputNative(int argc, Value *args) {
-  if (argc != 0) {
-    runtimeError("Function 'input' takes no arguments.");
+  if (argc != 0 && argc != 1) {
+    runtimeError("Function 'input' takes zero or one arguments.");
     return NIL_VAL;
+  }
+  if (argc == 1) {
+    if (args[0].type == VAL_OBJ && IS_STRING(args[0])) {
+      ObjString *str = AS_STRING(args[0]);
+      printf("%s", str->chars);
+      fflush(stdout);
+    }
   }
   size_t buf_cap = 16;
   char *buf = malloc(sizeof(char) * buf_cap);
@@ -237,10 +242,15 @@ static Value typeNative(int argc, Value *args) {
     type_len = 3;
     break;
   default:
-    type_str = "";
+    type_str = NULL;
     type_len = 0;
   }
-  return OBJ_VAL(copyString(type_str, type_len));
+  if (type_str) {
+
+    return OBJ_VAL(copyString(type_str, type_len));
+  } else {
+    return NIL_VAL;
+  }
 }
 
 static Value chrNative(int argc, Value *args) {
@@ -277,11 +287,63 @@ static Value intNative(int argc, Value *args) {
     runtimeError("Function 'int' requires 1 argument.");
     return NIL_VAL;
   }
-  if (!IS_FLOATING(args[0])) {
-    runtimeError("Function 'int' requires first argument to be a floating point number.");
+  switch (args[0].type) {
+  case VAL_FLOAT:
+    return INTEGER_VAL((long)AS_FLOATING(args[0]));
+  case VAL_CHARACTER:
+    return INTEGER_VAL((long)AS_CHARACTER(args[0]));
+  case VAL_INTEGER:
+    return args[0];
+  default:
+    runtimeError("Function 'int' requires first argument to be a floating "
+                 "point number.");
     return NIL_VAL;
   }
-  return INTEGER_VAL((long)AS_FLOATING(args[0]));
+}
+
+static Value joinNative(int argc, Value *args) {
+  if (argc != 1) {
+    runtimeError("Function 'join' requires 1 argument.");
+  }
+  if (!IS_LIST(args[0])) {
+    runtimeError("Function 'join' requires a list.");
+  }
+  ObjList *list = AS_LIST(args[0]);
+  char *str = (char *)malloc(sizeof(char) * list->count);
+  for (int i = 0; i < list->count; i++) {
+    if (!IS_CHARACTER(list->items[i])) {
+      free(str);
+      runtimeError(
+          "Function 'join' requires all list elements to be characters.");
+      return NIL_VAL;
+    }
+    str[i] = list->items[i].as.character;
+  }
+  ObjString *str_obj = copyString(str, list->count);
+  free(str);
+  return OBJ_VAL(str_obj);
+}
+
+static Value splitNative(int argc, Value *args) {
+  if (argc != 1) {
+    runtimeError("Function 'split' requires 1 argument.");
+  }
+  if (!IS_STRING(args[0])) {
+    runtimeError("Function 'split' requires a string.");
+  }
+  ObjString *str = AS_STRING(args[0]);
+  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+  push(OBJ_VAL(list));
+  list->items = reallocate(list->items, sizeof(Value) * list->capcity,
+                           sizeof(Value) * str->length);
+  list->capcity = str->length;
+  list->count = str->length;
+  for (int i = 0; i < str->length; i++) {
+    list->items[i].type = VAL_CHARACTER;
+    list->items[i].as.character = str->chars[i];
+  }
+  pop();
+  return OBJ_VAL(list);
 }
 
 static void defineNative(const char *name, NativeFn function) {
@@ -314,6 +376,8 @@ void initVM() {
   defineNative("chr", chrNative);
   defineNative("ord", ordNative);
   defineNative("int", intNative);
+  defineNative("join", joinNative);
+  defineNative("split", splitNative);
 }
 
 void freeVM() {
@@ -713,6 +777,9 @@ InterpretResult run() {
           idx = (int)idx_val.as.floating;
         } else {
           idx = (int)idx_val.as.integer;
+        }
+        if (idx < 0) {
+          idx = str->length + idx;
         }
         if (str->length <= idx || idx < 0) {
           runtimeError("List index out of range");
