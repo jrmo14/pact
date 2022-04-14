@@ -1,7 +1,7 @@
 project('pact', 'c')
 common_srcs = files(
   'src/chunk.c',
-  'src/debug.c',
+  #'src/debug.c',
   'src/memory.c',
   'src/object.c',
   'src/table.c',
