@@ -111,7 +111,7 @@ int storeToList(ObjList *list, int index, Value value) {
 
 int indexFromList(ObjList *list, int index, Value *val_str) {
   if (index < 0) {
-    index = list->count - index;
+    index = list->count + index;
   }
   if (index < list->count && index >= 0) {
     *val_str = list->items[index];
