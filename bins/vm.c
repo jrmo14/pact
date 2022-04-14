@@ -152,11 +152,15 @@ ObjFunction *load_program(const char *filename) {
   return rv;
 }
 
-int main() {
+int main(int argc, char **argv) {
+  if (argc != 2) {
+    fprintf(stderr, "Usage %s input.pactb", argv[0]);
+    return 1;
+  }
   initVM();
-  ObjFunction *function = load_program("out.pact");
+  ObjFunction *function = load_program(argv[1]);
   if (!function) {
-    fprintf(stdout, "NOT A FUNCTION\n");
+    fprintf(stderr, "Invalid file\n");
     return -1;
   }
   ObjClosure *closure = newClosure(function);
