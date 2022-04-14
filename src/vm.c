@@ -80,7 +80,9 @@ static Value appendNative(int argc, Value *args) {
     return NIL_VAL;
   }
   ObjList *list = AS_LIST(args[0]);
+  push(args[0]);
   appendToList(list, args[1]);
+  pop();
   return NIL_VAL;
 }
 
@@ -158,7 +160,7 @@ static Value lenNative(int argc, Value *args) {
 
 static Value rangeNative(int argc, Value *args) {
   if (argc == 0 || argc > 3) {
-    runtimeError("Function 'range' expects 1, 2, or 3 arguments");
+    runtimeError("Function 'range' expects 1, 2, or 3 arguments.");
     return NIL_VAL;
   }
   for (int i = 0; i < argc; i++) {
@@ -167,7 +169,6 @@ static Value rangeNative(int argc, Value *args) {
       return NIL_VAL;
     }
   }
-  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
   int start, stop, step;
   switch (argc) {
   case 1:
@@ -201,6 +202,8 @@ static Value rangeNative(int argc, Value *args) {
     return NIL_VAL;
   }
 
+  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+  push(OBJ_VAL(list));
   long size = (stop - start) / step;
   list->items = reallocate(list->items, sizeof(Value) * list->capcity,
                            sizeof(Value) * size);
@@ -210,7 +213,25 @@ static Value rangeNative(int argc, Value *args) {
     start += step;
   }
   list->count = size;
-  return OBJ_VAL(list);
+  return pop();
+}
+
+static Value allocNative(int argc, Value *args) {
+  if (argc != 1 || !IS_INTEGER(args[0])) {
+    runtimeError("Function 'alloc' expects 1 integer argument.");
+    return NIL_VAL;
+  }
+  long size = AS_INTEGER(args[0]);
+  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+  push(OBJ_VAL(list));
+  list->items = reallocate(list->items, sizeof(Value) * list->capcity,
+                           sizeof(Value) * size);
+  list->capcity = size;
+  for (int i = 0; i < size; i++) {
+    list->items[i] = INTEGER_VAL(0);
+  }
+  list->count = size;
+  return pop();
 }
 
 static Value typeNative(int argc, Value *args) {
@@ -246,7 +267,6 @@ static Value typeNative(int argc, Value *args) {
     type_len = 0;
   }
   if (type_str) {
-
     return OBJ_VAL(copyString(type_str, type_len));
   } else {
     return NIL_VAL;
@@ -308,6 +328,7 @@ static Value joinNative(int argc, Value *args) {
   if (!IS_LIST(args[0])) {
     runtimeError("Function 'join' requires a list.");
   }
+  push(args[0]);
   ObjList *list = AS_LIST(args[0]);
   char *str = (char *)malloc(sizeof(char) * list->count);
   for (int i = 0; i < list->count; i++) {
@@ -319,6 +340,7 @@ static Value joinNative(int argc, Value *args) {
     }
     str[i] = list->items[i].as.character;
   }
+  pop();
   ObjString *str_obj = copyString(str, list->count);
   free(str);
   return OBJ_VAL(str_obj);
@@ -332,6 +354,7 @@ static Value splitNative(int argc, Value *args) {
     runtimeError("Function 'split' requires a string.");
   }
   ObjString *str = AS_STRING(args[0]);
+  push(args[0]);
   ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
   push(OBJ_VAL(list));
   list->items = reallocate(list->items, sizeof(Value) * list->capcity,
@@ -342,8 +365,9 @@ static Value splitNative(int argc, Value *args) {
     list->items[i].type = VAL_CHARACTER;
     list->items[i].as.character = str->chars[i];
   }
+  Value rv = pop();
   pop();
-  return OBJ_VAL(list);
+  return rv;
 }
 
 static void defineNative(const char *name, NativeFn function) {
@@ -378,6 +402,7 @@ void initVM() {
   defineNative("int", intNative);
   defineNative("join", joinNative);
   defineNative("split", splitNative);
+  defineNative("alloc", allocNative);
 }
 
 void freeVM() {
